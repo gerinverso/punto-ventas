@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Ventas</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles.css">
+</head>
+
+<body>
+    <div class="d-flex" id="wrapper">
+        <div class="bg-dark text-white sidebar" id="sidebar-wrapper">
+            <div class="sidebar-heading text-center py-4 fs-4 fw-bold text-uppercase border-bottom border-secondary">
+                NATURA KIARA
+            </div>
+            <div class="list-group list-group-flush mt-3">
+                <button onclick="cambiarVista('ventas')"
+                    class="list-group-item list-group-item-action bg-dark text-white border-0 py-3">
+                    🛒 Venta
+                </button>
+                <button onclick="cambiarVista('productos')"
+                    class="list-group-item list-group-item-action bg-dark text-white border-0 py-3">
+                    📦 Productos
+                </button>
+                <button onclick="cambiarVista('historial')"
+                    class="list-group-item list-group-item-action bg-dark text-white border-0 py-3">
+                    📋 Historial
+                </button>
+                <button onclick="cambiarVista('cajasPrevias')"
+                    class="list-group-item list-group-item-action bg-dark text-white border-0 py-3">
+                    📦 Cajas Previas
+                </button>
+                <div class="border-bottom border-secondary my-2"></div>
+                <button onclick="cambiarVista('configuracion')"
+                    class="list-group-item list-group-item-action bg-dark text-white border-0 py-3">
+                    ⚙️ Configuración
+                </button>
+            </div>
+        </div>
+
+        <div id="page-content-wrapper" class="w-100 bg-light d-flex flex-column">
+            <div class="container-fluid p-4" id="app-content" style="flex: 1; overflow: auto;">
+                <h2 class="mt-4">¡Bienvenido al sistema!</h2>
+                <p class="lead">Elegí una opción del menú lateral para empezar a trabajar.</p>
+            </div>
+            <footer class="bg-light border-top text-start ps-4 py-2" style="font-size: 0.85rem; color: #888;">
+                © SAUCEDO GERMAN<br>
+                PROGRAMADOR
+            </footer>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,19 @@
+{
+  "name": "precios_app",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "vite": "^7.3.1"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-fs": "^2.4.5",
+    "@tauri-apps/plugin-sql": "^2.3.2"
+  }
+}

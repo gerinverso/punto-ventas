@@ -1,0 +1,25 @@
+/* Reseteamos márgenes */
+body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow-x: hidden;
+}
+
+#wrapper {
+    height: 100vh; /* Ocupa el 100% del alto de la pantalla */
+}
+
+/* Ancho fijo para el menú lateral */
+.sidebar {
+    width: 260px;
+    min-width: 260px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+/* Efecto al pasar el mouse por los botones del menú */
+.list-group-item:hover {
+    background-color: #343a40 !important;
+    padding-left: 25px !important;
+    transition: all 0.3s ease;
+}
