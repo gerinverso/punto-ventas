@@ -17,6 +17,21 @@ export async function cargarVistaConfiguracion(contenedor) {
     vista.innerHTML = `
         <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
             <h2 style="margin-bottom: 30px;">⚙️ Configuración y Mantenimiento</h2>
+
+            <div style="border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
+                <h3>🛡️ Licencia y Activación</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
+                    <button id="importar-licencia-btn" style="flex: 1; min-width: 150px; padding: 12px; background: #E91E63; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔑 Importar / Cargar Licencia</button>
+                </div>
+                <div style="background: #fdfdfd; padding: 15px; border-radius: 4px; border: 1px solid #ddd;">
+                    <p style="margin-bottom: 5px; font-weight: bold;">Tu ID de Equipo (HWID):</p>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="text" id="hwid-input" readonly value="Cargando..." style="flex: 1; padding: 8px; font-family: monospace; background: #eee; border: 1px solid #ccc; border-radius: 4px;">
+                        <button id="copiar-hwid-btn" style="padding: 9px 15px; background: #607D8B; color: white; border: none; border-radius: 4px; cursor: pointer;">📋 Copiar ID</button>
+                    </div>
+                    <p style="font-size: 11px; color: #666; margin-top: 8px;">Envía tu Código de Equipo al autor para recibir la <b>licencia.key</b></p>
+                </div>
+            </div>
             
             <div style="border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
                 <h3>📊 Estado del Sistema</h3>
@@ -114,8 +129,23 @@ export async function cargarVistaConfiguracion(contenedor) {
     `;
     
     contenedor.appendChild(vista);
-    
     // Event listeners
+    document.getElementById('importar-licencia-btn').addEventListener('click', async () => {
+        await importarLicenciaDesdeUI();
+    });
+
+    document.getElementById('copiar-hwid-btn').addEventListener('click', async () => {
+        const input = document.getElementById('hwid-input');
+        if (input.value && input.value !== 'Cargando...' && input.value !== 'Error') {
+            try {
+                await navigator.clipboard.writeText(input.value);
+                mostrarNotificacion('📋 ID de Hardware copiado!', 'success');
+            } catch (err) {
+                mostrarNotificacion('❌ Falló al copiar ID', 'error');
+            }
+        }
+    });
+
     document.getElementById('crear-backup-btn').addEventListener('click', async () => {
         await crearBackupDesdeUI();
         actualizarListaBackups();
@@ -135,9 +165,44 @@ export async function cargarVistaConfiguracion(contenedor) {
     });
     
     // Cargar datos iniciales
+    cargarHWID();
     actualizarEstadoSistema();
     actualizarListaBackups();
     actualizarHistorialVersiones();
+}
+
+async function cargarHWID() {
+    try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const hwid = await invoke('obtener_hwid');
+        document.getElementById('hwid-input').value = hwid;
+    } catch (e) {
+        document.getElementById('hwid-input').value = 'Error';
+    }
+}
+
+async function importarLicenciaDesdeUI() {
+    try {
+        const { open } = await import('@tauri-apps/plugin-dialog');
+        const { invoke } = await import('@tauri-apps/api/core');
+
+        const selectedPath = await open({
+            multiple: false,
+            filters: [{ name: 'Archivo de Licencia', extensions: ['key'] }]
+        });
+
+        if (!selectedPath) return;
+
+        // Copiamos la llave a AppLocalData mediante rust directamente
+        await invoke('instalar_licencia', { pathOrigen: selectedPath });
+        
+        mostrarNotificacion('✅ Licencia instalada correctamente. Reiniciando Sistema...', 'success');
+        setTimeout(() => window.location.reload(), 2000);
+
+    } catch (error) {
+        console.error('Error importando Licencia:', error);
+        mostrarNotificacion(`❌ Falló la importación: ${error.message || error}`, 'error');
+    }
 }
 
 /**
@@ -453,11 +518,13 @@ async function crearBackupDesdeUI() {
  * Restaura un backup desde la UI con confirmación
  */
 async function restaurarBackupDesdeUI(nombreBackup) {
-    const confirmacion = confirm(
+    const { confirm } = await import('@tauri-apps/plugin-dialog');
+    const confirmacion = await confirm(
         `⚠️ ¿Restaurar este backup?\n\n` +
         `Archivo: ${nombreBackup}\n\n` +
         `Se reemplazará la base de datos actual con los datos guardados.\n` +
-        `La aplicación se reiniciará automáticamente.`
+        `La aplicación se reiniciará automáticamente.`,
+        { title: 'Confirmar Restauración', kind: 'warning' }
     );
 
     if (!confirmacion) return;
@@ -492,8 +559,10 @@ async function restaurarBackupDesdeUI(nombreBackup) {
  * Elimina un backup desde la UI con confirmación
  */
 async function eliminarBackupDesdeUI(nombreBackup) {
-    const confirmacion = confirm(
-        `⚠️ ¿Eliminar permanentemente?\n\n${nombreBackup}`
+    const { confirm } = await import('@tauri-apps/plugin-dialog');
+    const confirmacion = await confirm(
+        `⚠️ ¿Eliminar permanentemente?\n\n${nombreBackup}`,
+        { title: 'Confirmar Eliminación', kind: 'warning' }
     );
 
     if (!confirmacion) return;
@@ -551,7 +620,17 @@ async function abrirCarpetaBackupsDesdeUI() {
  * Limpia todos los datos de la BD desde la UI con confirmación
  */
 async function limpiarBDDesdeUI() {
-    const confirmacion = confirm(
+    const password = window.prompt("🔒 Ingresa la contraseña de administrador para poder limpiar la base de datos:");
+    
+    if (password !== "191103") {
+        if (password !== null) {
+            mostrarNotificacion("❌ Contraseña incorrecta. Operación denegada.", "error");
+        }
+        return;
+    }
+
+    const { confirm } = await import('@tauri-apps/plugin-dialog');
+    const confirmacion = await confirm(
         `⚠️ ⚠️ ADVERTENCIA ⚠️ ⚠️\n\n` +
         `¿Estás SEGURO de que quieres limpiar TODOS los datos?\n\n` +
         `Se eliminarán:\n` +
@@ -559,7 +638,8 @@ async function limpiarBDDesdeUI() {
         `• Todas las ventas\n` +
         `• Todo el historial\n\n` +
         `Esta acción NO se puede deshacer fácilmente.\n\n` +
-        `Si necesitas guardar los datos, hace un backup primero.`
+        `Si necesitas guardar los datos, hace un backup primero.`,
+        { title: 'Confirma Limpieza de Datos', kind: 'warning' }
     );
 
     if (!confirmacion) return;

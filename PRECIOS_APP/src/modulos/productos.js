@@ -153,7 +153,9 @@ window.filtrarProductos = function () {
 
 window.eliminarProducto = async function (id) {
     if (!db) return;
-    if (confirm("¿Seguro que querés mandar este producto al tacho?")) {
+    const { confirm } = await import('@tauri-apps/plugin-dialog');
+    const seguro = await confirm("¿Seguro que querés mandar este producto al tacho?", { title: 'Eliminar Producto', kind: 'warning' });
+    if (seguro) {
         await db.execute('DELETE FROM productos WHERE id = ?', [id]);
         window.cargarProductos();
     }

@@ -8,10 +8,19 @@ import { cargarVistaHistorial } from './modulos/historial.js';
 import { cargarVistaCajasPrevias } from './modulos/cajasPrevias.js';
 import { cargarVistaConfiguracion } from './mantenimiento.js';
 
+import { validarLicencia } from './licencia.js';
+
 let db = null;
+let appRegistrada = false;
 
 // ¡Nuestro Director de Orquesta!
 window.cambiarVista = async function(vista) {
+    if (!appRegistrada && vista !== 'configuracion') {
+        alert("🔒 Por favor, Registra la Aplicación en la Vista de Configuración primero.");
+        await cargarVistaConfiguracion(document.getElementById('app-content'));
+        return;
+    }
+
     const contenedor = document.getElementById('app-content');
     
     // Le avisamos al usuario que estamos cargando
@@ -40,8 +49,15 @@ async function iniciarApp() {
         // Prendemos el motor una sola vez
         db = await iniciarBaseDeDatos();
         
-        // Arrancamos directo en la caja registradora
-        cambiarVista('ventas');
+        // Validamos hardware
+        const licencia = await validarLicencia();
+        if (licencia.valida) {
+            appRegistrada = true;
+            cambiarVista('ventas');
+        } else {
+            alert(licencia.mensaje);
+            cambiarVista('configuracion');
+        }
     } catch (error) {
         alert("Error crítico al iniciar el sistema.");
         console.error(error);

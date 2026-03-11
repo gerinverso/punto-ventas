@@ -4,6 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { obtenerBaseDatos } from './db.js';
 
 const BACKUP_DIR = 'backups';
 
@@ -34,6 +35,16 @@ function generarNombreBackup() {
 export async function crearBackup(db, nombrePersonalizado = null) {
     try {
         console.log('💾 Creando backup...');
+
+        // Obliga a SQLite a guardar todas las transacciones recientes al archivo principal .db para que el backup esté completamente al día.
+        try {
+            const dbRef = db || obtenerBaseDatos();
+            if (dbRef) {
+                await dbRef.execute("PRAGMA wal_checkpoint(TRUNCATE)");
+            }
+        } catch (e) {
+            console.warn('Advertencia de checkpoint WAL:', e);
+        }
         
         const nombreBackup = nombrePersonalizado || generarNombreBackup();
         
@@ -118,82 +129,38 @@ export async function eliminarBackup(nombreBackup) {
  */
 export async function importarBackup() {
     try {
-        console.log('📥 Importando backup desde archivo...');
+        console.log('📥 Importando backup desde archivo a través de la interfaz nativa...');
         
-        // Crear un input file temporal
-        const fileInput = document.createElement('input');
-        fileInput.type = 'file';
-        fileInput.accept = '.db';
-        fileInput.style.display = 'none';
+        const { open } = await import('@tauri-apps/plugin-dialog');
         
-        return new Promise((resolve, reject) => {
-            // Timeout de 30 segundos - si no selecciona nada, rechaza
-            const timeout = setTimeout(() => {
-                reject(new Error('Selección de archivo cancelada o expirada'));
-                document.body.removeChild(fileInput);
-            }, 30000);
-
-            fileInput.onchange = async (event) => {
-                clearTimeout(timeout);
-                try {
-                    const file = event.target.files[0];
-                    if (!file) {
-                        throw new Error('No se seleccionó un archivo');
-                    }
-
-                    // Validar que sea un archivo .db
-                    if (!file.name.endsWith('.db')) {
-                        throw new Error('Solo se permiten archivos .db');
-                    }
-
-                    // Generar nombre único para el backup
-                    const nombre = `importado_${Date.now()}_${file.name}`;
-                    
-                    // Leer el archivo como ArrayBuffer
-                    const arrayBuffer = await file.arrayBuffer();
-                    
-                    // Usar Tauri fs plugin para escribir el archivo
-                    const { writeFile } = await import('@tauri-apps/plugin-fs');
-                    const { appDataDir } = await import('@tauri-apps/api/path');
-                    
-                    const appData = await appDataDir();
-                    const backupDir = `${appData}/backups`;
-                    const filePath = `${backupDir}/${nombre}`;
-                    
-                    // Escribir el archivo
-                    await writeFile(filePath, new Uint8Array(arrayBuffer));
-                    
-                    console.log(`✓ Backup importado como: ${nombre}`);
-                    resolve({
-                        success: true,
-                        nombre: nombre,
-                        mensaje: `Backup importado: ${file.name}`
-                    });
-                } catch (error) {
-                    console.error('Error importando archivo:', error);
-                    reject(error);
-                } finally {
-                    // Limpiar el input del DOM
-                    if (document.body.contains(fileInput)) {
-                        document.body.removeChild(fileInput);
-                    }
-                }
-            };
-
-            // Manejar cuando el usuario cancela el diálogo
-            fileInput.oncancel = () => {
-                clearTimeout(timeout);
-                reject(new Error('Selección de archivo cancelada'));
-                if (document.body.contains(fileInput)) {
-                    document.body.removeChild(fileInput);
-                }
-            };
-            
-            fileInput.click();
-            document.body.appendChild(fileInput);
+        // Abrimos el selector de archivos nativo de forma segura a través de Tauri
+        const selectedPath = await open({
+            multiple: false,
+            filters: [{
+                name: 'Archivo de Base de Datos',
+                extensions: ['db']
+            }]
         });
+
+        if (!selectedPath) {
+            throw new Error('Selección de archivo cancelada');
+        }
+
+        // Ya que la interfaz nativa nos devolvió una ruta absoluta segura que el OS aprobó, 
+        // instruimos al backend de rust que se traiga el archivo libremente con permisos.
+        const nombreGenerado = await invoke('importar_backup_nativo', {
+            pathOrigen: selectedPath
+        });
+
+        console.log(`✓ Backup importado como: ${nombreGenerado}`);
+        return {
+            success: true,
+            nombre: nombreGenerado,
+            mensaje: `Backup importado correctamente`
+        };
+
     } catch (error) {
-        console.error('Error en importarBackup:', error);
+        console.error('Error importando archivo:', error);
         throw new Error(`Fallo al importar backup: ${error.message}`);
     }
 }
