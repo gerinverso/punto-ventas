@@ -58,8 +58,19 @@ export async function cargarVistaVentas(contenedor, baseDeDatos) {
                                 <select id="metodo-pago" class="form-select form-select-lg border-primary fw-bold text-center" onchange="manejarCambioPago()">
                                     <option value="Efectivo">💵 Efectivo</option>
                                     <option value="Transferencia">📱 Transferencia / App</option>
+                                    <option value="Debito_Credito">💳 Débito / Crédito</option>
                                     <option value="Mixto">💳 Pago en Parte (Efectivo + Transf.)</option>
                                 </select>
+                            </div>
+                            <div id="seccion-recargo" class="mb-3 bg-light p-3 rounded border border-warning" style="display: none;">
+                                <label class="form-label fw-bold text-dark">📈 Recargo por Tarjeta (%)</label>
+                                <div class="input-group">
+                                    <input type="number" id="porcentaje-recargo" class="form-control form-control-lg fw-bold text-center border-warning" placeholder="Ej: 10" step="1" value="0" oninput="dibujarCarrito()">
+                                    <span class="input-group-text bg-warning text-dark fw-bold border-warning">%</span>
+                                </div>
+                                <div class="mt-2 text-end">
+                                    <span class="fw-bold text-danger">+ $<span id="monto-recargo">0.00</span> extra</span>
+                                </div>
                             </div>
                             <div id="seccion-vuelto" class="mb-3" style="display: none;">
                                 <label class="form-label fw-bold">💵 Paga Con</label>
@@ -272,14 +283,21 @@ window.disminuirCantidad = function(index) {
 window.manejarCambioPago = function() {
     const metodo = document.getElementById('metodo-pago').value;
     const seccionVuelto = document.getElementById('seccion-vuelto');
+    const seccionRecargo = document.getElementById('seccion-recargo');
+    
+    // Resetear recargo al cambiar de método
+    const inputRecargo = document.getElementById('porcentaje-recargo');
+    if (inputRecargo) inputRecargo.value = '0';
     
     if (metodo === 'Efectivo') {
         seccionVuelto.style.display = 'block';
+        seccionRecargo.style.display = 'none';
         document.getElementById('paga-con').value = '';
         document.getElementById('vuelto-monto').innerText = '0.00';
         document.getElementById('paga-con').focus();
     } else if (metodo === 'Mixto') {
         seccionVuelto.style.display = 'none';
+        seccionRecargo.style.display = 'none';
         const totalVenta = carrito.reduce((suma, item) => suma + item.subtotal, 0);
         document.getElementById('total-pago-mixto').innerText = totalVenta.toFixed(2);
         document.getElementById('monto-efectivo').value = '';
@@ -288,19 +306,19 @@ window.manejarCambioPago = function() {
         document.getElementById('resumen-efectivo').innerText = '0.00';
         document.getElementById('resumen-transferencia').innerText = '0.00';
         
-        // Destruye cualquier instancia anterior completamente
         const modalElement = document.getElementById('modalPagoMixto');
         const existingModal = bootstrap.Modal.getInstance(modalElement);
-        if (existingModal) {
-            existingModal.dispose();
-        }
-        
-        // Crea e inmediatamente abre una instancia nueva
-        const newModal = new bootstrap.Modal(modalElement);
-        newModal.show();
+        if (existingModal) existingModal.dispose();
+        new bootstrap.Modal(modalElement).show();
+    } else if (metodo === 'Debito_Credito') {
+        seccionVuelto.style.display = 'none';
+        seccionRecargo.style.display = 'block';
+        inputRecargo.focus();
     } else {
         seccionVuelto.style.display = 'none';
+        seccionRecargo.style.display = 'none';
     }
+    window.dibujarCarrito(); // Re-actualiza total por si se borro un recargo
 };
 
 window.calcularPagoMixto = function() {
@@ -409,14 +427,49 @@ window.dibujarCarrito = function() {
         totalGeneral += item.subtotal;
         tbody.innerHTML += `<tr><td class="text-start ps-2 fw-bold text-truncate" style="max-width: 150px;">${item.nombre}</td><td><div class="btn-group btn-group-sm" role="group"><button class="btn btn-outline-secondary" onclick="disminuirCantidad(${index})">−</button><span class="badge bg-primary fs-6 px-2 py-1">${item.cantidad}</span><button class="btn btn-outline-secondary" onclick="aumentarCantidad(${index})">+</button></div></td><td class="fw-bold">$${item.subtotal.toFixed(2)}</td><td><button class="btn btn-sm btn-outline-danger" onclick="eliminarDelCarrito(${index})">❌</button></td></tr>`;
     });
-    document.getElementById('total-venta').innerText = totalGeneral.toFixed(2);
+    
+    // Cálculo condicional del recargo
+    const metodoObj = document.getElementById('metodo-pago');
+    let recargo = 0;
+    if (metodoObj && metodoObj.value === 'Debito_Credito') {
+        const objRecargo = document.getElementById('porcentaje-recargo');
+        const pct = objRecargo ? parseFloat(objRecargo.value) || 0 : 0;
+        if (pct > 0) {
+            recargo = totalGeneral * (pct / 100);
+        }
+        const elMontoRecargo = document.getElementById('monto-recargo');
+        if (elMontoRecargo) elMontoRecargo.innerText = recargo.toFixed(2);
+    }
+    
+    document.getElementById('total-venta').innerText = (totalGeneral + recargo).toFixed(2);
 };
 
 window.confirmarVenta = async function() {
     if (carrito.length === 0) { alert("Agregá algún producto antes de vender."); return; }
     try {
-        const totalVenta = carrito.reduce((suma, item) => suma + item.subtotal, 0);
-        let metodoPago = document.getElementById('metodo-pago').value;
+        let baseTotal = carrito.reduce((suma, item) => suma + item.subtotal, 0);
+        let totalVenta = baseTotal;
+        let metodoPagoOriginal = document.getElementById('metodo-pago').value;
+        let metodoPago = metodoPagoOriginal;
+        
+        let carritoFinal = [...carrito];
+        
+        if (metodoPagoOriginal === 'Debito_Credito') {
+            const porcentaje = parseFloat(document.getElementById('porcentaje-recargo').value) || 0;
+            if (porcentaje > 0) {
+                const recargoValue = baseTotal * (porcentaje / 100);
+                totalVenta += recargoValue;
+                carritoFinal.push({
+                    id: 0,
+                    nombre: '🔸 Recargo Tarjeta (' + porcentaje + '%)',
+                    cantidad: 1,
+                    precio_venta: recargoValue,
+                    subtotal: recargoValue
+                });
+            }
+            metodoPago = 'Débito / Crédito';
+        }
+        
         let montoEfectivo = null;
         let montoTransferencia = null;
         
@@ -425,10 +478,10 @@ window.confirmarVenta = async function() {
             metodoPago = `Efectivo: $${pagoMixto.efectivo.toFixed(2)} | Transferencia: $${pagoMixto.transferencia.toFixed(2)}`;
             montoEfectivo = pagoMixto.efectivo;
             montoTransferencia = pagoMixto.transferencia;
-        } else if (metodoPago === 'Efectivo') {
+        } else if (metodoPagoOriginal === 'Efectivo') {
             montoEfectivo = totalVenta;
             montoTransferencia = 0;
-        } else if (metodoPago === 'Transferencia') {
+        } else if (metodoPagoOriginal === 'Transferencia' || metodoPagoOriginal === 'Debito_Credito') {
             montoEfectivo = 0;
             montoTransferencia = totalVenta;
         }
@@ -446,17 +499,20 @@ window.confirmarVenta = async function() {
         const idVenta = resultadoVenta.lastInsertId;
         
         // 3. Guardamos el detalle
-        for (const item of carrito) {
+        for (const item of carritoFinal) {
             await db.execute(
                 'INSERT INTO detalle_ventas (venta_id, producto_id, producto_nombre, cantidad, precio_unitario, subtotal) VALUES (?, ?, ?, ?, ?, ?)', 
-                [idVenta, item.id, item.nombre, item.cantidad, item.precio_venta, item.subtotal]
+                [idVenta, item.id || 0, item.nombre, item.cantidad, item.precio_venta, item.subtotal]
             );
         }
         
         carrito = [];
         pagoMixto = null;
-        window.dibujarCarrito();
+        document.getElementById('porcentaje-recargo').value = '0';
+        document.getElementById('monto-recargo').innerText = '0.00';
         document.getElementById('metodo-pago').value = 'Efectivo';
+        window.manejarCambioPago();
+        window.dibujarCarrito();
         document.getElementById('buscador-venta').focus();
         
         const boton = document.querySelector('button[onclick="confirmarVenta()"]');

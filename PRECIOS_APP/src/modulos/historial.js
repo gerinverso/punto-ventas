@@ -44,8 +44,8 @@ export async function cargarVistaHistorial(contenedor, baseDeDatos) {
         </div>
 
         <div class="card shadow-sm border-0">
-            <div class="card-body p-0" style="max-height: 500px; overflow-y: auto;">
-                <table class="table table-hover table-striped mb-0 text-center align-middle">
+            <div class="card-body p-0 table-responsive" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-hover table-striped mb-0 text-center align-middle" style="min-width: 600px;">
                     <thead class="table-dark" style="position: sticky; top: 0; z-index: 10;"><tr><th>N° Ticket</th><th>Hora</th><th>Método de Pago</th><th>Total</th><th>Acciones</th></tr></thead>
                     <tbody id="tabla-historial"></tbody>
                 </table>
@@ -175,14 +175,17 @@ window.cargarHistorial = async function() {
                 sumaTransferencia += Number(venta.monto_transferencia);
             } else if (venta.metodo_pago === 'Efectivo') {
                 sumaEfectivo += venta.total;
-            } else if (venta.metodo_pago === 'Transferencia') {
+            } else if (venta.metodo_pago === 'Transferencia' || venta.metodo_pago === 'Débito / Crédito') {
                 sumaTransferencia += venta.total;
             }
             
             // Solo mostramos la hora en la tabla, porque sabemos que es del turno actual
             const horaAr = new Date(venta.fecha + 'Z').toLocaleTimeString('es-AR', { hour: '2-digit', minute:'2-digit' });
-            const colorBadge = venta.metodo_pago === 'Efectivo' ? 'secondary' : 'info';
-            const iconoPago = venta.metodo_pago === 'Efectivo' ? '💵 Efectivo' : (venta.metodo_pago === 'Transferencia' ? '📱 Transf.' : '💳 Mixto');
+            let colorBadge = 'secondary';
+            let iconoPago = '💵 Efectivo';
+            if (venta.metodo_pago === 'Transferencia') { colorBadge = 'info'; iconoPago = '📱 Transf.'; }
+            else if (venta.metodo_pago === 'Débito / Crédito') { colorBadge = 'primary'; iconoPago = '💳 Tarjeta'; }
+            else if (venta.metodo_pago !== 'Efectivo') { colorBadge = 'warning text-dark'; iconoPago = '💳 Mixto'; }
             
             tbody.innerHTML += `<tr style="cursor: pointer;" onclick="verDetalleTicket(${venta.id}, ${venta.total})"><td class="fw-bold fs-5 text-secondary">#${venta.id.toString().padStart(4, '0')}</td><td class="text-muted">${horaAr}</td><td><span class="badge bg-${colorBadge} text-white px-3 py-2">${iconoPago}</span></td><td class="fw-bold text-success fs-5">$${venta.total.toFixed(2)}</td><td><button class="btn btn-sm btn-outline-primary fw-bold" onclick="event.stopPropagation(); verDetalleTicket(${venta.id}, ${venta.total})">📄 Ver</button></td></tr>`;
         });

@@ -6,6 +6,7 @@
 import { crearBackup, listarBackups, restaurarBackup, eliminarBackup, importarBackup, abrirCarpetaBackups } from './backup.js';
 import { obtenerVersionActual, obtenerHistorialVersiones, obtenerInfoMigraciones } from './migrations.js';
 import { limpiarBaseDeDatos } from './db.js';
+import logoTitan from './assets/Titan ICONO.png';
 
 /**
  * Carga la vista de configuración en el contenedor
@@ -16,7 +17,10 @@ export async function cargarVistaConfiguracion(contenedor) {
     const vista = document.createElement('div');
     vista.innerHTML = `
         <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
-            <h2 style="margin-bottom: 30px;">⚙️ Configuración y Mantenimiento</h2>
+            <div style="text-align: center; margin-bottom: 25px;">
+                <img src="${logoTitan}" alt="Logo TITAN" style="max-width: 160px; filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.2));">
+            </div>
+            <h2 style="margin-bottom: 30px; text-align: center;">⚙️ Configuración y Mantenimiento</h2>
 
             <div style="border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
                 <h3>🛡️ Licencia y Activación</h3>
@@ -134,7 +138,7 @@ export async function cargarVistaConfiguracion(contenedor) {
                     <p style="margin: 0;"><b>Email:</b> <a href="mailto:germansau96@gmail.com" style="color: #2196F3; text-decoration: none;">germansau96@gmail.com</a></p>
                 </div>
                 <div style="margin-top: 15px; font-size: 12px; color: #888;">
-                    <p style="margin: 0;">&copy; ${new Date().getFullYear()} PRECIOS APP. Todos los derechos reservados.</p>
+                    <p style="margin: 0;">&copy; ${new Date().getFullYear()} TITAN. Todos los derechos reservados.</p>
                 </div>
             </div>
         </div>

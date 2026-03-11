@@ -242,10 +242,13 @@ fn validar_licencia(app_handle: AppHandle) -> Result<bool, String> {
     }
 
     let hwid = machine_uid::get().map_err(|e| format!("Error obteniendo HWID: {}", e))?;
-    let content = fs::read_to_string(&licencia_path)
-        .map_err(|e| format!("Error leyendo licencia: {}", e))?;
-        
-    if content.trim() == hwid.trim() {
+    let bytes = fs::read(&licencia_path).map_err(|e| format!("Error leyendo archivo de licencia: {}", e))?;
+    let content = String::from_utf8_lossy(&bytes).to_string();
+    
+    let clean_content: String = content.chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
+    let clean_hwid: String = hwid.chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
+    
+    if !clean_content.is_empty() && clean_content == clean_hwid {
         Ok(true)
     } else {
         Ok(false)

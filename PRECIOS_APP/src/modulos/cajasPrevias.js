@@ -136,9 +136,12 @@ export async function cargarVistaCajasPrevias(contenedor, db) {
                 if (venta.metodo_pago === 'Transferencia') {
                     iconoPago = '📱';
                     colorPago = 'info';
-                } else if (venta.metodo_pago === 'Mixto') {
+                } else if (venta.metodo_pago === 'Débito / Crédito') {
                     iconoPago = '💳';
-                    colorPago = 'warning';
+                    colorPago = 'primary';
+                } else if (venta.metodo_pago !== 'Efectivo') {
+                    iconoPago = '💳';
+                    colorPago = 'warning text-dark';
                 }
                 
                 let desglose = '';

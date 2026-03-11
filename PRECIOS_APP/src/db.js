@@ -3,7 +3,7 @@ import { ejecutarMigraciones, inicializarMigraciones, obtenerVersionActual, regi
 import { inicializarBackups } from './backup.js';
 
 // MODIFICACIÓN: En Tauri v2, fs y path están en paquetes separados
-import { readTextFile, remove, writeTextFile } from '@tauri-apps/plugin-fs';
+import { readFile, remove, writeFile } from '@tauri-apps/plugin-fs';
 import { appDataDir } from '@tauri-apps/api/path';
 
 let dbInstance = null;
@@ -30,7 +30,7 @@ async function verificarRestauracionPendiente() {
         console.log('✓ Restauración completada');
         
         // Eliminar el archivo de instrucción
-        await removeFile(restoreFile);
+        await remove(restoreFile);
     } catch (error) {
         // Manejo modular de errores: No detenemos la app si no hay restauración pendiente
         if (error && error.message && !error.message.includes('No such file')) {

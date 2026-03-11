@@ -23,3 +23,52 @@ body, html {
     padding-left: 25px !important;
     transition: all 0.3s ease;
 }
+
+/* ========================================================
+   ESTILOS GLOBALES DE MEJORA VISUAL (SCROLLBARS & UI)
+   ======================================================== */
+
+/* Scrollbar moderno estilo Mac/Premium */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #b1b1b1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #888;
+}
+
+/* Transiciones suaves para botones */
+.btn {
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.btn:hover {
+    transform: translateY(-1.5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.12);
+}
+
+/* Evitar desbordamientos en tarjetas y estilizar sus bordes */
+.card-body {
+    scrollbar-width: thin;
+}
+.card {
+    transition: box-shadow 0.2s ease-in-out;
+    border-radius: 8px !important;
+}
+.card:hover {
+    box-shadow: 0 0.4rem 1.2rem rgba(0,0,0,0.06) !important;
+}
+
+/* Hover suave en filas */
+.table-hover tbody tr {
+    transition: background-color 0.15s ease-in-out;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.04) !important;
+}
