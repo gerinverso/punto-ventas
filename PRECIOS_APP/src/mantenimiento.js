@@ -12,7 +12,7 @@ import { limpiarBaseDeDatos } from './db.js';
  */
 export async function cargarVistaConfiguracion(contenedor) {
     contenedor.innerHTML = '';
-    
+
     const vista = document.createElement('div');
     vista.innerHTML = `
         <div style="max-width: 900px; margin: 0 auto; padding: 20px;">
@@ -125,9 +125,21 @@ export async function cargarVistaConfiguracion(contenedor) {
                     Elimina todos los productos, ventas e historial. Mantiene la estructura de tablas.
                 </p>
             </div>
+
+            <div style="margin-top: 40px; padding: 20px; background: #fafafa; border-radius: 8px; border: 1px dashed #ccc; text-align: center;">
+                <h4 style="margin-bottom: 15px; color: #444;">👨‍💻 Desarrollo y Soporte Técnico</h4>
+                <div style="font-size: 14px; color: #555; line-height: 1.6;">
+                    <p style="margin: 0;"><b>Desarrollador:</b> Saucedo German</p>
+                    <p style="margin: 0;"><b>Teléfono / WhatsApp:</b> +54 9 3777 275575</p>
+                    <p style="margin: 0;"><b>Email:</b> <a href="mailto:germansau96@gmail.com" style="color: #2196F3; text-decoration: none;">germansau96@gmail.com</a></p>
+                </div>
+                <div style="margin-top: 15px; font-size: 12px; color: #888;">
+                    <p style="margin: 0;">&copy; ${new Date().getFullYear()} PRECIOS APP. Todos los derechos reservados.</p>
+                </div>
+            </div>
         </div>
     `;
-    
+
     contenedor.appendChild(vista);
     // Event listeners
     document.getElementById('importar-licencia-btn').addEventListener('click', async () => {
@@ -163,7 +175,7 @@ export async function cargarVistaConfiguracion(contenedor) {
     document.getElementById('limpiar-bd-btn').addEventListener('click', async () => {
         await limpiarBDDesdeUI();
     });
-    
+
     // Cargar datos iniciales
     cargarHWID();
     actualizarEstadoSistema();
@@ -195,7 +207,7 @@ async function importarLicenciaDesdeUI() {
 
         // Copiamos la llave a AppLocalData mediante rust directamente
         await invoke('instalar_licencia', { pathOrigen: selectedPath });
-        
+
         mostrarNotificacion('✅ Licencia instalada correctamente. Reiniciando Sistema...', 'success');
         setTimeout(() => window.location.reload(), 2000);
 
@@ -382,7 +394,7 @@ async function actualizarEstadoSistema() {
             } catch (e) {
                 rutaInfo = '<p>📁 Backups en la carpeta AppData de tu usuario</p>';
             }
-            
+
             estadoDiv.innerHTML = `
                 <p>✓ Base de datos: operativa</p>
                 <p>✓ Última verificación: ${new Date().toLocaleString()}</p>
@@ -532,19 +544,19 @@ async function restaurarBackupDesdeUI(nombreBackup) {
     try {
         // Deshabilitar botones mientras se restaura
         document.querySelectorAll('button').forEach(btn => btn.disabled = true);
-        
+
         mostrarNotificacion('⏳ Restaurando base de datos...', 'info');
-        
+
         const resultado = await restaurarBackup(nombreBackup, null);
-        
+
         mostrarNotificacion(
             '✅ Backup restaurado. La aplicación se recargará en 3 segundos...',
             'success'
         );
-        
+
         // Esperar a que Tauri libere los archivos y luego recargar
         await new Promise(resolve => setTimeout(resolve, 3000));
-        
+
         console.log('Recargando aplicación...');
         window.location.reload();
     } catch (error) {
@@ -591,7 +603,7 @@ async function importarBackupDesdeUI() {
         mostrarNotificacion('✅ ' + resultado.mensaje, 'success');
         btn.disabled = false;
         btn.textContent = '📥 Importar Backup';
-        
+
         // Actualizar lista de backups después de importar
         await actualizarListaBackups();
     } catch (error) {
@@ -621,7 +633,7 @@ async function abrirCarpetaBackupsDesdeUI() {
  */
 async function limpiarBDDesdeUI() {
     const password = window.prompt("🔒 Ingresa la contraseña de administrador para poder limpiar la base de datos:");
-    
+
     if (password !== "191103") {
         if (password !== null) {
             mostrarNotificacion("❌ Contraseña incorrecta. Operación denegada.", "error");
@@ -648,14 +660,14 @@ async function limpiarBDDesdeUI() {
         const btn = document.getElementById('limpiar-bd-btn');
         btn.disabled = true;
         btn.textContent = '⏳ Limpiando...';
-        
+
         // Limpiar la BD
         await limpiarBaseDeDatos();
 
         mostrarNotificacion('✅ Base de datos reiniciada exitosamente.', 'success');
         btn.disabled = false;
         btn.textContent = '⚠️ Limpiar Todos los Datos';
-        
+
         // Recargar la página después de 2 segundos
         setTimeout(() => {
             window.location.reload();

@@ -11,11 +11,30 @@ export async function cargarVistaVentas(contenedor, baseDeDatos) {
         <h2 class="mb-4">🛒 Punto de Venta</h2>
         <div class="row">
             <div class="col-md-7">
-                <div class="card shadow-sm border-0 mb-4 bg-primary text-white">
+                <div class="card shadow-sm border-0 mb-3 bg-primary text-white">
                     <div class="card-body rounded">
                         <h5 class="mb-3">🔍 Buscar o Escanear Producto</h5>
                         <input type="text" id="buscador-venta" class="form-control form-control-lg fw-bold" placeholder="Pasá el código de barras o escribí el nombre..." onkeyup="buscarParaVenta(event)" autofocus>
                         <div id="resultados-venta" class="list-group mt-2 shadow"></div>
+                    </div>
+                </div>
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-body bg-light rounded border border-secondary border-opacity-25">
+                        <h6 class="text-secondary mb-2 fw-bold">➕ Venta Libre (Personalizada)</h6>
+                        <div class="row g-2 align-items-center">
+                            <div class="col-md-6">
+                                <input type="text" id="temp-desc" class="form-control border-secondary" placeholder="Descripción (Ej. Varios, Caramelos)" onkeypress="if(event.key === 'Enter') document.getElementById('temp-precio').focus()">
+                            </div>
+                            <div class="col-md-4">
+                                <div class="input-group">
+                                    <span class="input-group-text bg-secondary text-white border-secondary">$</span>
+                                    <input type="number" id="temp-precio" class="form-control border-secondary fw-bold" placeholder="Precio" step="0.01" onkeypress="if(event.key === 'Enter') agregarProductoTemporal()">
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-secondary w-100 fw-bold shadow-sm" onclick="agregarProductoTemporal()">Sumar</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -111,6 +130,46 @@ export async function cargarVistaVentas(contenedor, baseDeDatos) {
                 </div>
             </div>
         </div>
+        
+        <!-- Modal de Ticket Finalizado -->
+        <div class="modal fade" id="modalTicketFinalizado" tabindex="-1" data-bs-backdrop="static">
+            <div class="modal-dialog modal-dialog-centered modal-sm">
+                <div class="modal-content border-0 bg-transparent">
+                    <div class="modal-body p-0">
+                        <div class="card border-0 shadow-lg" style="background: #fffdf5; font-family: 'Courier New', Courier, monospace; color: #333; border-radius: 2px;">
+                            <div class="card-header bg-transparent border-0 text-center pt-4 pb-0">
+                                <h4 class="mb-0 fw-bold" style="letter-spacing: 1px;">PUNTO DE VENTA</h4>
+                                <div class="text-muted small mt-1 fw-bold" id="ticket-finalizado-titulo">Ticket</div>
+                                <div class="text-muted small mt-2">--------------------------------</div>
+                            </div>
+                            <div class="card-body p-3 pt-0 pb-0">
+                                <div id="tabla-detalle-finalizado" style="font-size: 13px;"></div>
+                                <div class="text-muted small text-center my-2">--------------------------------</div>
+                                <div class="d-flex justify-content-between align-items-end mb-2">
+                                    <span class="fs-6 fw-bold">TOTAL</span>
+                                    <span class="fs-4 fw-bold" id="ticket-finalizado-total">$0.00</span>
+                                </div>
+                                <div id="desglose-finalizado" style="display: none; font-size: 13px;">
+                                    <div class="d-flex justify-content-between text-muted">
+                                        <span>Efectivo:</span>
+                                        <span>$<span id="ticket-finalizado-efectivo">0.00</span></span>
+                                    </div>
+                                    <div class="d-flex justify-content-between text-muted">
+                                        <span>Transferencia:</span>
+                                        <span>$<span id="ticket-finalizado-transferencia">0.00</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent border-0 text-center pb-4 pt-3">
+                                <div class="text-muted small mb-3">--------------------------------</div>
+                                <div class="small text-muted mb-3" style="font-size: 11px;">¡Gracias por su compra!</div>
+                                <button type="button" class="btn btn-outline-dark btn-sm rounded px-4 fw-bold" data-bs-dismiss="modal" onclick="document.getElementById('buscador-venta').focus()">NUEVA VENTA</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     `;
     window.dibujarCarrito();
     window.manejarCambioPago();
@@ -160,6 +219,33 @@ window.agregarAlCarrito = function(producto) {
         carrito.push({ id: producto.id, nombre: producto.nombre, precio_venta: producto.precio_venta, cantidad: 1, subtotal: producto.precio_venta });
     }
     window.dibujarCarrito();
+};
+
+window.agregarProductoTemporal = function() {
+    let desc = document.getElementById('temp-desc').value.trim();
+    const precio = parseFloat(document.getElementById('temp-precio').value);
+
+    if (isNaN(precio) || precio <= 0) {
+        alert('Por favor inserta un precio válido mayor a cero.');
+        document.getElementById('temp-precio').focus();
+        return;
+    }
+
+    if (!desc) { desc = 'Varios'; }
+
+    // Generamos un ID virtual único para estos productos temporales
+    // Si metés otro "Varios" de exactamente el mismo precio, se apila
+    const idVirtual = 'temporal_' + desc.toLowerCase().replace(/\\s+/g, '') + '_' + precio;
+
+    window.agregarAlCarrito({
+        id: idVirtual,
+        nombre: '🔸 ' + desc,
+        precio_venta: precio
+    });
+
+    document.getElementById('temp-desc').value = '';
+    document.getElementById('temp-precio').value = '';
+    document.getElementById('buscador-venta').focus();
 };
 
 window.eliminarDelCarrito = function(index) {
@@ -218,14 +304,19 @@ window.manejarCambioPago = function() {
 };
 
 window.calcularPagoMixto = function() {
-    const totalVenta = carrito.reduce((suma, item) => suma + item.subtotal, 0);
-    const montoEfectivoActual = parseFloat(document.getElementById('monto-efectivo').value) || 0;
-    const montoTransferenciaActual = parseFloat(document.getElementById('monto-transferencia').value) || 0;
-    const faltante = totalVenta - (montoEfectivoActual + montoTransferenciaActual);
+    // Calculamos siempre ajustando decimales, convirtiendo a enteros (centavos) para evitar basuras flotantes
+    const totalVentaCents = Math.round(carrito.reduce((suma, item) => suma + item.subtotal, 0) * 100);
+    const montoEfectivoCents = Math.round((parseFloat(document.getElementById('monto-efectivo').value) || 0) * 100);
+    const montoTransferenciaCents = Math.round((parseFloat(document.getElementById('monto-transferencia').value) || 0) * 100);
     
-    document.getElementById('resumen-efectivo').innerText = montoEfectivoActual.toFixed(2);
-    document.getElementById('resumen-transferencia').innerText = montoTransferenciaActual.toFixed(2);
-    document.getElementById('faltante-pago').innerText = faltante.toFixed(2);
+    const faltanteCents = totalVentaCents - (montoEfectivoCents + montoTransferenciaCents);
+    const faltanteDecimal = faltanteCents / 100;
+    
+    document.getElementById('resumen-efectivo').innerText = (montoEfectivoCents / 100).toFixed(2);
+    document.getElementById('resumen-transferencia').innerText = (montoTransferenciaCents / 100).toFixed(2);
+    
+    // Si la matemática arrojaba negativo (-0.00), al forzar Math.max cortamos el faltante inferior a cero.
+    document.getElementById('faltante-pago').innerText = faltanteDecimal <= 0 ? "0.00" : faltanteDecimal.toFixed(2);
 };
 
 window.calcularVuelto = function() {
@@ -249,30 +340,54 @@ window.calcularVuelto = function() {
 };
 
 window.actualizarMontosAutomaticos = function(campoQueCambio) {
-    // Solo calculamos el faltante actualizando la pantalla sin auto-completar 
-    // para que el usuario pueda ver lo que le falta pagar
+    const totalVentaCents = Math.round(carrito.reduce((suma, item) => suma + item.subtotal, 0) * 100);
+    
+    if (campoQueCambio === 'efectivo') {
+        const strVal = document.getElementById('monto-efectivo').value;
+        if (strVal === '') {
+            document.getElementById('monto-transferencia').value = '';
+        } else {
+            const valCents = Math.round((parseFloat(strVal) || 0) * 100);
+            const restanteCents = totalVentaCents - valCents;
+            document.getElementById('monto-transferencia').value = restanteCents > 0 ? (restanteCents / 100).toFixed(2) : "0.00";
+        }
+    } else if (campoQueCambio === 'transferencia') {
+        const strVal = document.getElementById('monto-transferencia').value;
+        if (strVal === '') {
+            document.getElementById('monto-efectivo').value = '';
+        } else {
+            const valCents = Math.round((parseFloat(strVal) || 0) * 100);
+            const restanteCents = totalVentaCents - valCents;
+            document.getElementById('monto-efectivo').value = restanteCents > 0 ? (restanteCents / 100).toFixed(2) : "0.00";
+        }
+    }
+    
     window.calcularPagoMixto();
 };
 
 window.confirmartPagoMixto = function() {
-    const totalVenta = carrito.reduce((suma, item) => suma + item.subtotal, 0);
-    const montoEfectivo = parseFloat(document.getElementById('monto-efectivo').value) || 0;
-    const montoTransferencia = parseFloat(document.getElementById('monto-transferencia').value) || 0;
-    const total = montoEfectivo + montoTransferencia;
+    // Convertir de nuevo todo a enteros de centavos para proteger el if de falsos positivos
+    const totalVentaCents = Math.round(carrito.reduce((suma, item) => suma + item.subtotal, 0) * 100);
+    const montoEfectivoCents = Math.round((parseFloat(document.getElementById('monto-efectivo').value) || 0) * 100);
+    const montoTransferenciaCents = Math.round((parseFloat(document.getElementById('monto-transferencia').value) || 0) * 100);
     
-    if (total < totalVenta) {
-        alert('El total ingresado no cubre la venta. Faltante: $' + (totalVenta - total).toFixed(2));
+    const totalAbonadoCents = montoEfectivoCents + montoTransferenciaCents;
+    
+    if (totalAbonadoCents < totalVentaCents) {
+        const faltanteReal = (totalVentaCents - totalAbonadoCents) / 100;
+        alert('El total ingresado no cubre la venta. Faltante: $' + faltanteReal.toFixed(2));
         return;
     }
     
-    if (total > totalVenta) {
-        alert('El total ingresado supera la venta. Exceso: $' + (total - totalVenta).toFixed(2));
+    if (totalAbonadoCents > totalVentaCents) {
+        const excesoReal = (totalAbonadoCents - totalVentaCents) / 100;
+        alert('El total ingresado supera la venta. Exceso: $' + excesoReal.toFixed(2));
         return;
     }
     
     pagoMixto = {
-        efectivo: montoEfectivo,
-        transferencia: montoTransferencia
+        efectivo: montoEfectivoCents / 100,
+        transferencia: montoTransferenciaCents / 100
     };
     
     bootstrap.Modal.getInstance(document.getElementById('modalPagoMixto')).hide();
@@ -349,8 +464,48 @@ window.confirmarVenta = async function() {
         boton.innerHTML = '¡VENTA EXITOSA! 🎉';
         boton.classList.replace('btn-success', 'btn-primary');
         setTimeout(() => { boton.innerHTML = textoOriginal; boton.classList.replace('btn-primary', 'btn-success'); }, 1500);
+        
+        // 4. Mostrar el ticket finalizado en pantalla
+        window.mostrarTicketRealizado(idVenta, totalVenta);
+        
     } catch (error) {
         console.error(error);
         alert("Error al guardar venta.");
+    }
+};
+
+window.mostrarTicketRealizado = async function(idVenta, totalVenta) {
+    if (!db) return;
+    try {
+        const ventaInfo = await db.select('SELECT * FROM ventas WHERE id = ?', [idVenta]);
+        const venta = ventaInfo[0];
+        
+        const detalles = await db.select('SELECT * FROM detalle_ventas WHERE venta_id = ?', [idVenta]);
+        
+        const tbody = document.getElementById('tabla-detalle-finalizado');
+        tbody.innerHTML = '';
+        detalles.forEach(item => { 
+            tbody.innerHTML += `
+            <div class="d-flex justify-content-between mb-1">
+                <div class="pe-2 text-wrap"><span class="fw-bold">${item.cantidad}x</span> ${item.producto_nombre}</div>
+                <div>$${item.subtotal.toFixed(2)}</div>
+            </div>`; 
+        });
+        
+        document.getElementById('ticket-finalizado-titulo').innerText = '🧾 Ticket #' + idVenta.toString().padStart(4, '0');
+        document.getElementById('ticket-finalizado-total').innerText = '$' + totalVenta.toFixed(2);
+        
+        const desgloseElement = document.getElementById('desglose-finalizado');
+        if (venta.monto_efectivo !== null && venta.monto_transferencia !== null && (venta.monto_efectivo > 0 || venta.monto_transferencia > 0)) {
+            desgloseElement.style.display = 'block';
+            document.getElementById('ticket-finalizado-efectivo').innerText = venta.monto_efectivo.toFixed(2);
+            document.getElementById('ticket-finalizado-transferencia').innerText = venta.monto_transferencia.toFixed(2);
+        } else {
+            desgloseElement.style.display = 'none';
+        }
+        
+        new bootstrap.Modal(document.getElementById('modalTicketFinalizado')).show();
+    } catch (error) { 
+        console.error("Error mostrando ticket post-venta:", error); 
     }
 };

@@ -37,7 +37,7 @@ export async function cargarVistaCajasPrevias(contenedor, db) {
             const totalCaja = ventas[0]?.total_caja || 0;
             const cantidadVentas = ventas[0]?.cantidad_ventas || 0;
 
-            const fecha = new Date(caja.fecha_apertura);
+            const fecha = new Date(caja.fecha_apertura + 'Z');
             const dias = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
             const nombreDia = dias[fecha.getDay()];
             const fechaFormato = fecha.toLocaleDateString('es-AR');
@@ -47,7 +47,7 @@ export async function cargarVistaCajasPrevias(contenedor, db) {
             let horaCierre = '';
             let nombreEmpleado = '';
             if (caja.fecha_cierre) {
-                const fechaCierre = new Date(caja.fecha_cierre);
+                const fechaCierre = new Date(caja.fecha_cierre + 'Z');
                 horaCierre = fechaCierre.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
                 nombreEmpleado = caja.nombre_empleado ? ` - ${caja.nombre_empleado}` : '';
             }
@@ -128,7 +128,7 @@ export async function cargarVistaCajasPrevias(contenedor, db) {
             `;
 
             for (const venta of detalles) {
-                const fecha = new Date(venta.fecha);
+                const fecha = new Date(venta.fecha + 'Z');
                 const horaVenta = fecha.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
                 
                 let iconoPago = '💵';
@@ -170,33 +170,37 @@ export async function cargarVistaCajasPrevias(contenedor, db) {
                 </div>
                 
                 <div class="modal fade" id="modalTicketAnterior" tabindex="-1">
-                    <div class="modal-dialog modal-dialog-centered">
-                        <div class="modal-content border-0 shadow">
-                            <div class="modal-header bg-dark text-white">
-                                <h5 class="modal-title fw-bold" id="titulo-ticket-anterior">Detalle del Ticket</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                            </div>
+                    <div class="modal-dialog modal-dialog-centered modal-sm">
+                        <div class="modal-content border-0 bg-transparent">
                             <div class="modal-body p-0">
-                                <table class="table table-sm table-striped text-center mb-0 align-middle">
-                                    <thead class="table-secondary">
-                                        <tr><th class="text-start ps-3 py-2">Producto</th><th>Cant</th><th>Precio</th><th>Subtotal</th></tr>
-                                    </thead>
-                                    <tbody id="tabla-detalle-anterior"></tbody>
-                                </table>
-                            </div>
-                            <div class="modal-footer bg-light d-flex flex-column border-top-0 gap-2">
-                                <div class="d-flex justify-content-between">
-                                    <h4 class="mb-0 text-secondary">Total:</h4>
-                                    <h2 class="mb-0 text-success fw-bold" id="total-ticket-anterior">$0.00</h2>
-                                </div>
-                                <div id="desglose-anterior" style="display: none;" class="border-top pt-2">
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <span class="text-secondary">Efectivo:</span>
-                                        <span class="fw-bold">$<span id="ticket-efectivo-anterior">0.00</span></span>
+                                <div class="card border-0 shadow-lg" style="background: #fffdf5; font-family: 'Courier New', Courier, monospace; color: #333; border-radius: 2px;">
+                                    <div class="card-header bg-transparent border-0 text-center pt-4 pb-0">
+                                        <h4 class="mb-0 fw-bold" style="letter-spacing: 1px;">PUNTO DE VENTA</h4>
+                                        <div class="text-muted small mt-1 fw-bold" id="titulo-ticket-anterior">Ticket</div>
+                                        <div class="text-muted small mt-2">--------------------------------</div>
                                     </div>
-                                    <div class="d-flex justify-content-between">
-                                        <span class="text-secondary">Transferencia:</span>
-                                        <span class="fw-bold">$<span id="ticket-transf-anterior">0.00</span></span>
+                                    <div class="card-body p-3 pt-0 pb-0">
+                                        <div id="tabla-detalle-anterior" style="font-size: 13px;"></div>
+                                        <div class="text-muted small text-center my-2">--------------------------------</div>
+                                        <div class="d-flex justify-content-between align-items-end mb-2">
+                                            <span class="fs-6 fw-bold">TOTAL</span>
+                                            <span class="fs-4 fw-bold" id="total-ticket-anterior">$0.00</span>
+                                        </div>
+                                        <div id="desglose-anterior" style="display: none; font-size: 13px;">
+                                            <div class="d-flex justify-content-between text-muted">
+                                                <span>Efectivo:</span>
+                                                <span>$<span id="ticket-efectivo-anterior">0.00</span></span>
+                                            </div>
+                                            <div class="d-flex justify-content-between text-muted">
+                                                <span>Transferencia:</span>
+                                                <span>$<span id="ticket-transf-anterior">0.00</span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer bg-transparent border-0 text-center pb-4 pt-3">
+                                        <div class="text-muted small mb-3">--------------------------------</div>
+                                        <div class="small text-muted mb-3" style="font-size: 11px;">¡Gracias por su compra!</div>
+                                        <button type="button" class="btn btn-outline-dark btn-sm rounded px-4 fw-bold" data-bs-dismiss="modal">CERRAR RECIBO</button>
                                     </div>
                                 </div>
                             </div>
@@ -219,7 +223,11 @@ export async function cargarVistaCajasPrevias(contenedor, db) {
                 tbody.innerHTML = '';
                 
                 detalles.forEach(item => {
-                    tbody.innerHTML += `<tr><td class="text-start ps-3 fw-bold text-secondary">${item.producto_nombre}</td><td><span class="badge bg-secondary">${item.cantidad}</span></td><td class="text-muted">$${item.precio_unitario.toFixed(2)}</td><td class="fw-bold">$${item.subtotal.toFixed(2)}</td></tr>`;
+                    tbody.innerHTML += `
+                    <div class="d-flex justify-content-between mb-1">
+                        <div class="pe-2 text-wrap"><span class="fw-bold">${item.cantidad}x</span> ${item.producto_nombre}</div>
+                        <div>$${item.subtotal.toFixed(2)}</div>
+                    </div>`;
                 });
                 
                 document.getElementById('titulo-ticket-anterior').innerText = '🧾 Ticket #' + ventaId.toString().padStart(4, '0');
