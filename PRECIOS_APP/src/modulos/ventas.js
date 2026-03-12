@@ -14,7 +14,10 @@ export async function cargarVistaVentas(contenedor, baseDeDatos) {
                 <div class="card shadow-sm border-0 mb-3 bg-primary text-white">
                     <div class="card-body rounded">
                         <h5 class="mb-3">🔍 Buscar o Escanear Producto</h5>
-                        <input type="text" id="buscador-venta" class="form-control form-control-lg fw-bold" placeholder="Pasá el código de barras o escribí el nombre..." onkeyup="buscarParaVenta(event)" autofocus>
+                        <div class="position-relative">
+                        <input type="text" id="buscador-venta" class="form-control form-control-lg fw-bold" placeholder="Pasá el código de barras o escribí el nombre..." onkeyup="buscarParaVenta(event)" autocomplete="off" autofocus>
+                        <span id="scanner-indicator" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);font-size:1.2rem;opacity:0;transition:opacity 0.3s;pointer-events:none;">📡</span>
+                        </div>
                         <div id="resultados-venta" class="list-group mt-2 shadow"></div>
                     </div>
                 </div>
@@ -207,8 +210,24 @@ window.buscarParaVenta = function(event) {
     if (textoBuscado === '') return;
     
     if (event.key === 'Enter') {
-        const productoExacto = todosLosProductos.find(p => p.codigo.toLowerCase() === textoBuscado);
-        if (productoExacto) { window.agregarAlCarrito(productoExacto); input.value = ''; return; }
+        // Buscar primero por código exacto (lector de barras) y luego por nombre
+        const productoExacto = 
+            todosLosProductos.find(p => p.codigo.toLowerCase() === textoBuscado) ||
+            todosLosProductos.find(p => p.nombre.toLowerCase() === textoBuscado);
+        
+        if (productoExacto) {
+            window.agregarAlCarrito(productoExacto);
+            input.value = '';
+            cajaResultados.innerHTML = '';
+            // Indicador visual de escaneo exitoso
+            const indicator = document.getElementById('scanner-indicator');
+            if (indicator) {
+                indicator.style.opacity = '1';
+                setTimeout(() => { indicator.style.opacity = '0'; }, 600);
+            }
+            return;
+        }
+        // Si no hay coincidencia exacta, dejamos la lista de sugerencias visible
     }
     
     const sugerencias = todosLosProductos.filter(prod => prod.nombre.toLowerCase().includes(textoBuscado) || prod.codigo.toLowerCase().includes(textoBuscado)).slice(0, 5);

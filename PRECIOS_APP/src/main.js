@@ -7,8 +7,8 @@ import { cargarVistaProductos } from './modulos/productos.js';
 import { cargarVistaHistorial } from './modulos/historial.js';
 import { cargarVistaCajasPrevias } from './modulos/cajasPrevias.js';
 import { cargarVistaConfiguracion } from './mantenimiento.js';
-
 import { validarLicencia } from './licencia.js';
+import { iniciarScanner, activarFocoAutomaticoVentas } from './scanner.js';
 
 let db = null;
 let appRegistrada = false;
@@ -29,6 +29,7 @@ window.cambiarVista = async function(vista) {
     // Llamamos al archivo correspondiente según lo que haya tocado
     if (vista === 'ventas') {
         await cargarVistaVentas(contenedor, db);
+        activarFocoAutomaticoVentas();
     } 
     else if (vista === 'productos') {
         await cargarVistaProductos(contenedor, db);
@@ -48,6 +49,9 @@ async function iniciarApp() {
     try {
         // Prendemos el motor una sola vez
         db = await iniciarBaseDeDatos();
+
+        // Iniciamos el lector de código de barras (una sola vez, globalmente)
+        iniciarScanner();
         
         // Validamos hardware
         const licencia = await validarLicencia();

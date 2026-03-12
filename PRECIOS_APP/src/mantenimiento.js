@@ -24,6 +24,38 @@ export async function cargarVistaConfiguracion(contenedor) {
 
             <div style="border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px;">
                 <h3>🛡️ Licencia y Activación</h3>
+
+                <!-- Tarjeta de estado de licencia -->
+                <div id="licencia-status-card" style="
+                    display: flex;
+                    gap: 12px;
+                    margin-bottom: 15px;
+                    background: #f8f9fa;
+                    border: 1px solid #dee2e6;
+                    border-radius: 10px;
+                    padding: 16px;
+                    align-items: center;
+                ">
+                    <div style="font-size: 2.2rem;" id="licencia-icono">⏳</div>
+                    <div style="flex: 1;">
+                        <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 4px;">LICENCIA</div>
+                        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+                            <div>
+                                <div style="font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.8px;">Estado</div>
+                                <div id="licencia-estado" style="font-weight: 700; font-size: 1rem; color: #333;">Verificando...</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.8px;">Vence</div>
+                                <div id="licencia-vence" style="font-weight: 700; font-size: 1rem; color: #333;">—</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 10px; color: #999; text-transform: uppercase; letter-spacing: 0.8px;">Restante</div>
+                                <div id="licencia-restante" style="font-weight: 700; font-size: 1rem; color: #333;">—</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div style="display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap;">
                     <button id="importar-licencia-btn" style="flex: 1; min-width: 150px; padding: 12px; background: #E91E63; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">🔑 Importar / Cargar Licencia</button>
                 </div>
@@ -182,6 +214,7 @@ export async function cargarVistaConfiguracion(contenedor) {
 
     // Cargar datos iniciales
     cargarHWID();
+    cargarInfoLicencia();
     actualizarEstadoSistema();
     actualizarListaBackups();
     actualizarHistorialVersiones();
@@ -194,6 +227,46 @@ async function cargarHWID() {
         document.getElementById('hwid-input').value = hwid;
     } catch (e) {
         document.getElementById('hwid-input').value = 'Error';
+    }
+}
+
+async function cargarInfoLicencia() {
+    try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const info = await invoke('info_licencia');
+        
+        const card = document.getElementById('licencia-status-card');
+        const iconoEl = document.getElementById('licencia-icono');
+        const estadoEl = document.getElementById('licencia-estado');
+        const venceEl = document.getElementById('licencia-vence');
+        const restanteEl = document.getElementById('licencia-restante');
+
+        if (info.activa) {
+            iconoEl.textContent = '✅';
+            card.style.background = '#f0fdf4';
+            card.style.borderColor = '#86efac';
+            estadoEl.textContent = info.estado;
+            estadoEl.style.color = '#16a34a';
+            venceEl.textContent = info.vence;
+            venceEl.style.color = '#333';
+            // Mostrar días restantes con color según urgencia
+            const dias = info.dias_restantes;
+            let diasTexto = dias === 1 ? '1 día' : `${dias} días`;
+            let diasColor = dias > 30 ? '#16a34a' : dias > 7 ? '#d97706' : '#dc2626';
+            restanteEl.textContent = diasTexto;
+            restanteEl.style.color = diasColor;
+        } else {
+            iconoEl.textContent = info.estado === 'Sin licencia' ? '🔒' : '❌';
+            card.style.background = '#fef2f2';
+            card.style.borderColor = '#fca5a5';
+            estadoEl.textContent = info.estado;
+            estadoEl.style.color = '#dc2626';
+            venceEl.textContent = info.vence;
+            restanteEl.textContent = '—';
+        }
+    } catch (e) {
+        const estadoEl = document.getElementById('licencia-estado');
+        if (estadoEl) estadoEl.textContent = 'Error al verificar';
     }
 }
 

@@ -229,6 +229,9 @@ fn obtener_hwid() -> Result<String, String> {
     machine_uid::get().map_err(|e| format!("Error obteniendo HWID: {}", e))
 }
 
+use base64::{Engine as _, engine::general_purpose::STANDARD as b64};
+use chrono::{NaiveDate, Datelike};
+
 #[tauri::command]
 fn validar_licencia(app_handle: AppHandle) -> Result<bool, String> {
     let app_data_dir = app_handle
@@ -237,22 +240,92 @@ fn validar_licencia(app_handle: AppHandle) -> Result<bool, String> {
         .map_err(|e| format!("Error obteniendo directorio de app: {}", e))?;
         
     let licencia_path = app_data_dir.join("licencia.key");
-    if !licencia_path.exists() {
-        return Ok(false);
-    }
+    if !licencia_path.exists() { return Ok(false); }
 
     let hwid = machine_uid::get().map_err(|e| format!("Error obteniendo HWID: {}", e))?;
-    let bytes = fs::read(&licencia_path).map_err(|e| format!("Error leyendo archivo de licencia: {}", e))?;
-    let content = String::from_utf8_lossy(&bytes).to_string();
+    let bytes = fs::read(&licencia_path).map_err(|e| format!("Error leyendo licencia: {}", e))?;
+    let content = String::from_utf8_lossy(&bytes).trim().to_string();
     
-    let clean_content: String = content.chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
+    let decoded_bytes = match b64.decode(content) {
+        Ok(b) => b,
+        Err(_) => return Ok(false),
+    };
+    
+    let decoded_str = String::from_utf8_lossy(&decoded_bytes).to_string();
+    let partes: Vec<&str> = decoded_str.split('|').collect();
+    if partes.len() != 2 { return Ok(false); }
+    
+    let clean_lic: String = partes[0].chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
+    let clean_hwid: String = hwid.chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
+    if clean_lic != clean_hwid || clean_lic.is_empty() { return Ok(false); }
+    
+    let fecha_vencimiento = match NaiveDate::parse_from_str(partes[1], "%Y-%m-%d") {
+        Ok(f) => f,
+        Err(_) => return Ok(false),
+    };
+    
+    let hoy = chrono::Local::now().naive_local().date();
+    if hoy > fecha_vencimiento { return Ok(false); }
+    Ok(true)
+}
+
+#[derive(serde::Serialize)]
+struct InfoLicencia {
+    activa: bool,
+    vence: String,
+    dias_restantes: i64,
+    estado: String,
+}
+
+#[tauri::command]
+fn info_licencia(app_handle: AppHandle) -> Result<InfoLicencia, String> {
+    let app_data_dir = app_handle
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("Error: {}", e))?;
+        
+    let licencia_path = app_data_dir.join("licencia.key");
+    
+    if !licencia_path.exists() {
+        return Ok(InfoLicencia { activa: false, vence: "—".to_string(), dias_restantes: 0, estado: "Sin licencia".to_string() });
+    }
+
+    let hwid = machine_uid::get().map_err(|e| format!("Error HWID: {}", e))?;
+    let bytes = fs::read(&licencia_path).map_err(|e| format!("Error leyendo licencia: {}", e))?;
+    let content = String::from_utf8_lossy(&bytes).trim().to_string();
+    
+    let decoded_bytes = match b64.decode(content) {
+        Ok(b) => b,
+        Err(_) => return Ok(InfoLicencia { activa: false, vence: "—".to_string(), dias_restantes: 0, estado: "Licencia inválida".to_string() }),
+    };
+    
+    let decoded_str = String::from_utf8_lossy(&decoded_bytes).to_string();
+    let partes: Vec<&str> = decoded_str.split('|').collect();
+    if partes.len() != 2 {
+        return Ok(InfoLicencia { activa: false, vence: "—".to_string(), dias_restantes: 0, estado: "Formato incorrecto".to_string() });
+    }
+    
+    let clean_lic: String = partes[0].chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
     let clean_hwid: String = hwid.chars().filter(|c| c.is_alphanumeric() || *c == '-').collect();
     
-    if !clean_content.is_empty() && clean_content == clean_hwid {
-        Ok(true)
-    } else {
-        Ok(false)
+    if clean_lic != clean_hwid || clean_lic.is_empty() {
+        return Ok(InfoLicencia { activa: false, vence: "—".to_string(), dias_restantes: 0, estado: "Licencia de otro equipo".to_string() });
     }
+    
+    let fecha_vencimiento = match NaiveDate::parse_from_str(partes[1], "%Y-%m-%d") {
+        Ok(f) => f,
+        Err(_) => return Ok(InfoLicencia { activa: false, vence: "—".to_string(), dias_restantes: 0, estado: "Fecha inválida".to_string() }),
+    };
+    
+    let hoy = chrono::Local::now().naive_local().date();
+    let dias = (fecha_vencimiento - hoy).num_days();
+    let vence_fmt = format!("{:02}/{:02}/{}", fecha_vencimiento.day(), fecha_vencimiento.month(), fecha_vencimiento.year());
+    
+    if dias < 0 {
+        return Ok(InfoLicencia { activa: false, vence: vence_fmt, dias_restantes: 0, estado: "Vencida".to_string() });
+    }
+    
+    Ok(InfoLicencia { activa: true, vence: vence_fmt, dias_restantes: dias, estado: "Activa".to_string() })
 }
 
 #[tauri::command]
@@ -292,7 +365,8 @@ pub fn run() {
             importar_backup_nativo,
             obtener_hwid,
             validar_licencia,
-            instalar_licencia
+            instalar_licencia,
+            info_licencia
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
